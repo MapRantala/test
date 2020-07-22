@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<body>         <h1> Wordpress Permalinks Snafu </h1>
+        <p> 
+<p>Using a free <a rel="noreferrer noopener" aria-label=" (opens in a new tab)" href="http://statcounter.com/" target="_blank">StatCounter.com</a> add-in, I get weekly emails showing the number of visitors to this blog. During the summer, the numbers plummeted. At the time, I thought it had to do with Google/Chrome requiring https.</p>
+
+
+
+<figure class="wp-block-image"><img src="https://i0.wp.com/maprantala.com/wp-content/uploads/2019/01/stats.png?w=1170&#038;ssl=1" alt="" class="wp-image-4844" srcset="https://i0.wp.com/maprantala.com/wp-content/uploads/2019/01/stats.png?w=546&amp;ssl=1 546w, https://i0.wp.com/maprantala.com/wp-content/uploads/2019/01/stats.png?resize=300%2C138&amp;ssl=1 300w" sizes="(max-width: 546px) 100vw, 546px" data-recalc-dims="1" /></figure>
+
+
+
+<p>Luckily, HostGator (disclosure: I&#8217;m working on becoming a HostGator affiliate), who I use to host this blog and a few other websites, provided free https certificates for all of my sites. So I made sure that https://MapRantala.com worked and thought the numbers would rebound.</p>
+
+
+
+<p>Looking at the chart, you can see they did only slightly. I assumed that it would just be a matter of time for Google to see that https was enabled and since the blog is more a place for me to make notes to myself, I wasn&#8217;t concerned.</p>
+
+
+
+<p>This weekend, I decided to take a look at Google&#8217;s Search Console and see if I could determine what was going on. Looking in the coverage, I saw many 404 results for pages. As I investigated some of them, I realized that it was due to my Permalinks setting. </p>
+
+
+
+<p>The URLs, as shown below, were not working.</p>
+
+
+
+<figure class="wp-block-image"><img src="https://i0.wp.com/maprantala.com/wp-content/uploads/2019/01/404.jpg?w=1170&#038;ssl=1" alt="" class="wp-image-4846" srcset="https://i0.wp.com/maprantala.com/wp-content/uploads/2019/01/404.jpg?w=836&amp;ssl=1 836w, https://i0.wp.com/maprantala.com/wp-content/uploads/2019/01/404.jpg?resize=300%2C198&amp;ssl=1 300w, https://i0.wp.com/maprantala.com/wp-content/uploads/2019/01/404.jpg?resize=768%2C506&amp;ssl=1 768w" sizes="(max-width: 836px) 100vw, 836px" data-recalc-dims="1" /></figure>
+
+
+
+<p>The website was using &#8220;https://maprantala.com/index.php/&#8221; as the base URL. So, for example, &#8220;https://maprantala.com/2017/08/07/arcgis-pro-2-0-migration-overview&#8221; did not work but  &#8220;https://maprantala.com/<strong>index.php</strong>/2017/08/07/arcgis-pro-2-0-migration-overview&#8221; did. </p>
+
+
+
+<p>To change the WordPress Permalinks setting, I went to Settings-Permalinks and removed he &#8220;index.php/&#8221; from the Custom Structure. Waiting a day, the 404s have disappeared in Search Console and, in theory, I just need to wait for Google to re-index the pages which are currently shown as &#8220;Crawled &#8211; currently not indexed&#8221;</p>
+
+
+
+<figure class="wp-block-image"><img src="https://i2.wp.com/maprantala.com/wp-content/uploads/2019/01/permalinks.jpg?w=1170&#038;ssl=1" alt="Wordpress Permalinks Setting " class="wp-image-4847" srcset="https://i2.wp.com/maprantala.com/wp-content/uploads/2019/01/permalinks.jpg?w=961&amp;ssl=1 961w, https://i2.wp.com/maprantala.com/wp-content/uploads/2019/01/permalinks.jpg?resize=300%2C45&amp;ssl=1 300w, https://i2.wp.com/maprantala.com/wp-content/uploads/2019/01/permalinks.jpg?resize=768%2C115&amp;ssl=1 768w" sizes="(max-width: 961px) 100vw, 961px" data-recalc-dims="1" /><figcaption>WordPress Permalinks Setting </figcaption></figure>
+
+
+
+<p>That may not have been the whole problem. I republished this blog under a different name for a year. But moved it back to this domain when that domain registration expired. So that may have been another factor.</p>
+ </p>
+        <hr />        <h1> Quick & Dirty: REST calls via python </h1>
+        <p> <p>Was sharing a python script with a php developer to illustrate how a couple of requests can be made to an ArcGIS REST endpoint.</p>
+<p>Nothing fancy&#8211;one gets the data for one record, one gets data for all records, and the final gets the data for the record that intersects a point.</p>
+<p>The only thing to note is that the original version that I shared gets a token because the service it uses is secured. I commented out the routine to get a token and just substituted in a blank string and pointed the code at one of esri&#8217;s sample services at https://sampleserver6.arcgisonline.com/arcgis/.</p>
+<p>The file can be downloaded <a href="https://github.com/MapRantala/Blog/blob/master/python/python/20180824_RESTRequests/sampleRESTRequests.py" target="_blank" rel="noopener">here</a>.</p>
+<p>&nbsp;</p>
+<pre>import requests, urllib, httplib, urllib2, json
+
+serverURL = 'https://sampleserver6.arcgisonline.com/arcgis/'
+tokenURL =  serverURL+"tokens/"
+phaseQueryURL = serverURL+"rest/services/Census/MapServer/3/query"
+
+#Fields to be aware of:
+# PhaseName = Name of the phase, a unique value.
+# Status_Date = Date a phase was marked as "Live"
+# PhaseStatus = Live, Provisioning, Pending
+
+def makeRequest(inURL,inPayload):
+    theRequest = urllib2.Request(url=inURL,data = urllib.urlencode(inPayload))
+    theResponse = urllib2.urlopen(theRequest)
+    responseString = theResponse.read()
+    theJSON = json.loads(responseString)
+    return theJSON
+
+def getToken(inUser,inPass):
+    inputData = {'username':inUser,'password':inPass, 'f':'json'}
+    theJSON = makeRequest(tokenURL,inputData)
+    print(theJSON)
+    token = theJSON['token']
+    return token
+
+def queryAllStates(inToken):
+    inputData = { 'where': "1=1", 'f': 'geojson', 'outFields': '*' , 'outSR': 4326, 'token':inToken}
+    theJSON = makeRequest(phaseQueryURL,inputData)
+    return theJSON
+
+def queryState(inPhase,inToken):
+    inputData = { 'where': "STATE_NAME = '{}'".format(inPhase), 'f': 'geojson', 'outFields': '*' , 'outSR': 4326, 'token':inToken}
+    theJSON = makeRequest(phaseQueryURL,inputData)
+    return theJSON
+
+def findStateForPoint(inX,inY,inToken):
+    inputData = {'geometry': { 'x': inX, 'y': inY}, 'geometryType': 'esriGeometryPoint', 'inSR':4326, 'spatialRel':'esriSpatialRelIntersects', 'outFields':'*', 'f': 'json','token':inToken}
+
+    theJSON = makeRequest(phaseQueryURL,inputData)
+    return theJSON
+
+username = ""
+password = ""
+
+##theToken = getToken(username,password)
+theToken = ""
+print(theToken)
+
+#Attribute Query to get information about one State
+stateInfo = queryState('Wisconsin',theToken)
+print(stateInfo)
+
+#Attribute Query to get information about all States
+statesInfo = queryAllStates(theToken)
+print(statesInfo)
+
+
+#Find phase for a lat-lon
+theState = findStateForPoint(-93.280842,44.95531,theToken)
+print(theState)
+</pre>
+ </p>
+        <hr />        <h1> Forcing ArcGIS Online to Update Feature Layer Information </h1>
+        <p> <p>Because we use ArcGIS Online Web Maps in our daily work-flows, I created an AGO group that contains Feature Layers that are links to our self-hosted ArcGIS Server services. This way, users can quickly add data from our ArcGIS Server Site and not have to look up URLs/Usernames/Passwords (I&#8217;ve save the username/password as part of the ArcGIS Online service when appropriate).</p>
+<p>But I&#8217;ve had a problem where if I change the service, the changes are not reflected in the AGO Feature Layer for that service and I have to monkey about to get the changes to migrate to the maps.</p>
+<p>Finally annoyed with doing that for the Xth time, I decided to see if I could get the feature service information to refresh automatically. Documentation search found nothing; call in to tech support&#8211;still waiting. While experimenting, however, I found that newer Feature Layer I added this way do actually update when I made changes. WTH?!</p>
+<p>Using <a href="https://ago-assistant.esri.com/#" target="_blank" rel="noopener">ArcGIS Online Assistant</a>, something caught my eye. My older Feature Layers had a Description and Data but the newer (automatically updating ones) do not.</p>
+<p><a href="https://i1.wp.com/maprantala.com/wp-content/uploads/2018/06/Data-1.jpg"><img class="alignnone size-full wp-image-4784" src="https://i1.wp.com/maprantala.com/wp-content/uploads/2018/06/Data-1.jpg?resize=918%2C306" alt="" width="918" height="306" data-recalc-dims="1" /></a></p>
+<p>Was this the answer&#8211;the 912 line JSON file for this service had all the information about the Feature Service. So it seems like the information about my Feature Service probably got saved when I create the Feature Layer and this cache was used later instead of gathering new information. Now that I had a suspected reason why this was occurring, I needed to figure out how to either delete or force a refresh of the cache. There&#8217;s no delete option next to the Data section so I figured I would empty the content and see if that would work.</p>
+<p><span style="color: #ff0000;">WARNING: Unsupported Technique Ahead!! Proceed at Own Risk&#8211;Test First with a Copy of Data!!!</span></p>
+<p><span style="color: #000000;">Using AGO Assistant, I copied the Feature Layer that did not recognize when I made changes to the Feature Service and then made a map with that new Feature Layer so that I could test against a copy of the data. Once I had those, I went to the Copy of my Feature Layer in AGO Assistant and deleted almost everything in the Data section and saved that. (Note that it despite saying it saved my edits when I deleted everything, the contents were still there so you have to leave something in there).</span></p>
+<p><span style="color: #000000;"> <a href="https://i1.wp.com/maprantala.com/wp-content/uploads/2018/06/almostEmptyJSON.png"><img class="alignnone size-full wp-image-4787" src="https://i1.wp.com/maprantala.com/wp-content/uploads/2018/06/almostEmptyJSON.png?resize=514%2C128" alt="" width="514" height="128" data-recalc-dims="1" /></a></span><br />
+Once I went and looked at the Feature Layer and it showed the layer I had previously added that was not showing up. And when added to a New map, it reflected all my changes. The existing map, however, still had previous settings&#8211;a new field, for example, did not appear.</p>
+<p>So I found a partial fix&#8211;the Feature Layer hopefully will not cache any information about the Feature Service so when I add it to a map, the most recent settings will be used. Will still need to update maps but at least I have a Feature Layer now that reflects the most recent changes to the Feature Service.</p>
+ </p>
+        <hr />        <h1> Using ArcPy.Mapping to update Definition Queries </h1>
+        <p> <p>Working with a routine process today that I normally only do once in awhile but today needed to do it several times. It requires changing the definition query on several features classes. Being the &#8220;lazy&#8221; GIS guy that I am (owner of a company I used to work at called me that once as a sort of compliment for my tendency to script a lot of what I did), I decided to finally script it instead of changing definition queries about 42 times.</p>
+<p>The quick &amp; dirty <del>script</del> code that I wrote &amp; can be run in the ArcMap python window consists of two parts. The first three lines just need to be run once per session to get a variable set with the list of layers. The loop I ran multiple times, updating the &#8220;.replace&#8221; settings each time. I ran the loop, did my other processes, and re-ran the loop as needed and was a happy GISer.</p>
+<pre>#These first 3 lines only need to be run once.
+mxd = arcpy.mapping.MapDocument("CURRENT")
+l = arcpy.mapping.ListDataFrames(mxd)[0] #Note the hard-code [0], meaning the first dataframe. YMMV
+ll = arcpy.mapping.ListLayers(l)
+
+#Everytime I wanted to update the definition queries just need to update the replace parameters.
+
+for l in ll:
+     try:
+        print(l.name)
+        print(l.definitionQuery)
+        z = l.definitionQuery.replace("_011","_012")
+        l.definitionQuery = z
+     except:
+        print("")
+</pre>
+ </p>
+        <hr />        <h1> ArcToolbox Tool: Add [ST_CON_ABR] to Hennepin County, MN Centerlines </h1>
+        <p> <p>One of the great advancements over the last decade plus in GIS is that government agencies have started to move away from a &#8220;recover-our-cost&#8221; mentality to more of an &#8220;Open Data&#8221;. Minnesota, for example, has launched their <a href="https://gisdata.mn.gov/" target="_blank" rel="noopener">Geospatial Commons</a> as a platform for sharing data.</p>
+<p>And while getting free, authoritative data is awesome, it can leave you in a bind if the structure of the data changes. Sometime between April and September, Hennepin County, Minnesota, changed the schema of their <a href="http://www.hennepin.us/gisopendata" target="_blank" rel="noopener">publicly available street centerlines data</a>.</p>
+<p>The data used to have both a full, concatenated street name field ([ST_CONCAT]) and an abbreviated version ([ST_CON_ABR]). A record might have &#8220;James Lofton Avenue North&#8221; and &#8220;James Lofton Ave N&#8221;, respectively, in these two fields. The abbreviated version was nice for labeling but it disappeared from the most recent updates.</p>
+<p><a href="https://i1.wp.com/maprantala.com/wp-content/uploads/2017/10/Streetnames.jpg"><img class="alignnone wp-image-4746" src="https://i1.wp.com/maprantala.com/wp-content/uploads/2017/10/Streetnames.jpg?resize=803%2C417" alt="" width="803" height="417" data-recalc-dims="1" /></a></p>
+<p>So, as you  might guess from the fact that I&#8217;m posting about it, I wrote a script to add that field in and launch it from an ArcToolbox Tool. Nothing fancy going on in the code, just a series of replaces, depending on the field. Using dictionaries instead of arrays of paired values might have been better but the script takes just a few seconds to run so I can live with it as-is.</p>
+<p>The list of street type abbreviations came from a combination of <a href="http://support.esri.com/en/technical-article/000008454" target="_blank" rel="noopener">ESRI&#8217;s standards</a> and those found in an older version of the Hennepin County data. There were no conflicting abbreviations between the two. The code warns if a street name occurs in the data that is not in the list.</p>
+<p>While I&#8217;m including the code here for reference, it&#8217;s probably best to <a href="https://github.com/MapRantala/Blog/tree/master/ArcToolbox/20171004_Add_STCONABR" target="_blank" rel="noopener">download the code from GitHub.</a></p>
+<pre>#-------------------------------------------------------------------------------
+# Name:        usi_dataprep_Add_STCONABR
+#
+# Purpose:     This can be used to add [CT_CON_ABR] to Hennepin County, MN
+#              centerlines. This is a concatenated, abbreviated full name of
+#              the street. This used to be included in the data but
+#              disappeared from the downloads in the summer of 2017.
+#
+#              Data available at: http://www.hennepin.us/gisopendata
+#
+# Author:      mrantala
+#
+# Created:     2017.10.04
+#
+#------------------------------------------------------------------------------
+
+import arcpy
+
+############################################
+## Custom Variables
+#These are the fields that are concatenated. Hennepin has others but were always blank.
+requiredFieldList = ["ST_PRE_DIR","ST_PRE_TYP","ST_NAME","ST_POS_TYP","ST_POS_DIR"]
+#This is the name of the field to add
+newFieldName = "ST_CON_ABR"
+
+#These are the abbreviations for [ST_POS_TYPE]. The list was created using a sample of
+#Hennepin's centerline data &amp; Esri Tech article: http://support.esri.com/en/technical-article/000008454
+# Note that I intentionally left cases in where there is no abbreviation (Fall, for example) as a means of
+#documenting the fact that it should NOT change.
+
+abbList = []
+abbList.append(["Alcove","Alcove"]) #Hennepin Specific
+abbList.append(["Alley","Aly"])
+abbList.append(["Annex","Anx"])
+abbList.append(["Arcade","Arc"])
+abbList.append(["Avenue","Ave"])
+abbList.append(["Bay","Bay"]) #Hennepin Specific
+abbList.append(["Bayoo","Byu"])
+abbList.append(["Beach","Bch"])
+abbList.append(["Bend","Bnd"])
+abbList.append(["Bluff","Blf"])
+abbList.append(["Bluffs","Blfs"])
+abbList.append(["Bottom","Btm"])
+abbList.append(["Boulevard","Blvd"])
+abbList.append(["Branch","Br"])
+abbList.append(["Bridge","Brg"])
+abbList.append(["Brook","Brk"])
+abbList.append(["Brooks","Brks"])
+abbList.append(["Burg","Bg"])
+abbList.append(["Burgs","Bgs"])
+abbList.append(["Bypass","Byp"])
+abbList.append(["Camp","Cp"])
+abbList.append(["Canyon","Cyn"])
+abbList.append(["Cape","Cpe"])
+abbList.append(["Causeway","Cswy"])
+abbList.append(["Center","Ctr"])
+abbList.append(["Centers","Ctrs"])
+abbList.append(["Crossings","Crossings"]) #Hennepin Specific
+abbList.append(["Crossroad","Xrd"])
+abbList.append(["Chase","Chase"]) #Hennepin Specific
+abbList.append(["Circle","Cir"])
+abbList.append(["Circles","Cirs"])
+abbList.append(["Cliff","Clf"])
+abbList.append(["Cliffs","Clfs"])
+abbList.append(["Club","Clb"])
+abbList.append(["Close","Close"]) #Hennepin Specific
+abbList.append(["Common","Cmn"])
+abbList.append(["Commons","Cmns"]) #Hennepin Specific
+abbList.append(["Corner","Cor"])
+abbList.append(["Corners","Cors"])
+abbList.append(["Corridor","Corridor"]) #Hennepin Specific
+abbList.append(["Course","Crse"])
+abbList.append(["Court","Ct"])
+abbList.append(["Courts","Cts"])
+abbList.append(["Cove","Cv"])
+abbList.append(["Coves","Cvs"])
+abbList.append(["Creek","Crk"])
+abbList.append(["Crescent","Cres"])
+abbList.append(["Crest","Crst"])
+abbList.append(["Cross","Cross"]) #Hennepin Specific
+abbList.append(["Crossing","Xing"])
+abbList.append(["Curve","Curve"])
+abbList.append(["Dale","Dl"])
+abbList.append(["Dam","Dm"])
+abbList.append(["Divide","Dv"])
+abbList.append(["Down","Down"]) #Hennepin Specific
+abbList.append(["Downs","Downs"]) #Hennepin Specific
+abbList.append(["Drive","Dr"])
+abbList.append(["Drives","Drs"])
+abbList.append(["Edge","Edge"]) #Hennepin Specific
+abbList.append(["Entry","Entry"]) #Hennepin Specific
+abbList.append(["Estate","Est"])
+abbList.append(["Estates","Ests"])
+abbList.append(["Expressway","Expy"])
+abbList.append(["Extension","Ext"])
+abbList.append(["Extensions","Exts"])
+abbList.append(["Fall","Fall"])
+abbList.append(["Falls","Fls"])
+abbList.append(["Ferry","Fry"])
+abbList.append(["Field","Fld"])
+abbList.append(["Fields","Flds"])
+abbList.append(["Flat","Flt"])
+abbList.append(["Flats","Flts"])
+abbList.append(["Ford","Frd"])
+abbList.append(["Fords","Frds"])
+abbList.append(["Forest","Frst"])
+abbList.append(["Forge","Frg"])
+abbList.append(["Forges","Frgs"])
+abbList.append(["Fork","Frk"])
+abbList.append(["Forks","Frks"])
+abbList.append(["Fort","Ft"])
+abbList.append(["Freeway","Fwy"])
+abbList.append(["Gables","Gables"]) #Hennepin Specific
+abbList.append(["Garden","Gdn"])
+abbList.append(["Gardens","Gdns"])
+abbList.append(["Gate","Gate"]) #Hennepin Specific
+abbList.append(["Gateway","Gtwy"])
+abbList.append(["Glade","Glade"]) #Hennepin Specific
+abbList.append(["Glen","Gln"])
+abbList.append(["Glens","Glns"])
+abbList.append(["Green","Grn"])
+abbList.append(["Greens","Grns"])
+abbList.append(["Greenway","Greenway"]) #Hennepin Specific
+abbList.append(["Grove","Grv"])
+abbList.append(["Groves","Grvs"])
+abbList.append(["Harbor","Hbr"])
+abbList.append(["Harbors","Hbrs"])
+abbList.append(["Haven","Hvn"])
+abbList.append(["Heights","Hts"])
+abbList.append(["Highway","Hwy"])
+abbList.append(["Hill","Hl"])
+abbList.append(["Hills","Hls"])
+abbList.append(["Hollow","Holw"])
+abbList.append(["Horn","Horn"]) #Hennepin Specific
+abbList.append(["Inlet","Inlt"])
+abbList.append(["Island","Is"])
+abbList.append(["Islands","Iss"])
+abbList.append(["Isle","Isle"])
+abbList.append(["Junction","Jct"])
+abbList.append(["Junctions","Jcts"])
+abbList.append(["Key","Ky"])
+abbList.append(["Keys","Kys"])
+abbList.append(["Knoll","Knl"])
+abbList.append(["Knolls","Knls"])
+abbList.append(["Lake","Lk"])
+abbList.append(["Lakes","Lks"])
+abbList.append(["Land","Land"])
+abbList.append(["Landing","Lndg"])
+abbList.append(["Lane","Ln"])
+abbList.append(["Light","Lgt"])
+abbList.append(["Lights","Lgts"])
+abbList.append(["Loaf","Lf"])
+abbList.append(["Lock","Lck"])
+abbList.append(["Locks","Lcks"])
+abbList.append(["Lodge","Ldg"])
+abbList.append(["Loop","Loop"])
+abbList.append(["Mall","Mall"])
+abbList.append(["Manor","Mnr"])
+abbList.append(["Manors","Mnrs"])
+abbList.append(["Meadow","Mdw"])
+abbList.append(["Meadows","Mdws"])
+abbList.append(["Mews","Mews"])
+abbList.append(["Mill","Ml"])
+abbList.append(["Mills","Mls"])
+abbList.append(["Mission","Msn"])
+abbList.append(["Motorway","Mtwy"])
+abbList.append(["Mount","Mt"])
+abbList.append(["Mountain","Mtn"])
+abbList.append(["Mountains","Mtns"])
+abbList.append(["Neck","Nck"])
+abbList.append(["Orchard","Orch"])
+abbList.append(["Oval","Oval"])
+abbList.append(["Overpass","Opas"])
+abbList.append(["Park","Park"])
+abbList.append(["Parks","Park"])
+abbList.append(["Parkway","Pkwy"])
+abbList.append(["Parkways","Pkwy"])
+abbList.append(["Pass","Pass"])
+abbList.append(["Passage","Psge"])
+abbList.append(["Path","Path"])
+abbList.append(["Pike","Pike"])
+abbList.append(["Pine","Pne"])
+abbList.append(["Pines","Pnes"])
+abbList.append(["Place","Pl"])
+abbList.append(["Plain","Pln"])
+abbList.append(["Plains","Plns"])
+abbList.append(["Plaza","Plz"])
+abbList.append(["Point","Pt"])
+abbList.append(["Points","Pts"])
+abbList.append(["Port","Prt"])
+abbList.append(["Ports","Prts"])
+abbList.append(["Prairie","Pr"])
+abbList.append(["Radial","Radl"])
+abbList.append(["Railroad","Railroad"]) #Hennepin Specific
+abbList.append(["Ramp","Ramp"])
+abbList.append(["Ranch","Rnch"])
+abbList.append(["Rapid","Rpd"])
+abbList.append(["Rapids","Rpds"])
+abbList.append(["Rest","Rst"])
+abbList.append(["Ridge","Rdg"])
+abbList.append(["Ridges","Rdgs"])
+abbList.append(["Rise","Rise"]) #Hennepin Specific
+abbList.append(["River","Riv"])
+abbList.append(["Road","Rd"])
+abbList.append(["Roads","Rds"])
+abbList.append(["Route","Rte"])
+abbList.append(["Row","Row"])
+abbList.append(["Rue","Rue"])
+abbList.append(["Run","Run"])
+abbList.append(["Shoal","Shl"])
+abbList.append(["Shoals","Shls"])
+abbList.append(["Shore","Shr"])
+abbList.append(["Shores","Shrs"])
+abbList.append(["Skies","Skies"]) #Hennepin Specific
+abbList.append(["Skyway","Skwy"])
+abbList.append(["Spring","Spg"])
+abbList.append(["Springs","Spgs"])
+abbList.append(["Spur","Spur"])
+abbList.append(["Spurs","Spur"])
+abbList.append(["Square","Sq"])
+abbList.append(["Squares","Sqrs"])
+abbList.append(["Station","Sta"])
+abbList.append(["Stravenue","Stra"])
+abbList.append(["Stream","Strm"])
+abbList.append(["Street","St"])
+abbList.append(["Streets","Sts"])
+abbList.append(["Summit","Smt"])
+abbList.append(["Terrace","Ter"])
+abbList.append(["Throughway","Trwy"])
+abbList.append(["Trace","Trce"])
+abbList.append(["Track","Trak"])
+abbList.append(["Trafficway","Trfy"])
+abbList.append(["Trail","Trl"])
+abbList.append(["Tunnel","Tunl"])
+abbList.append(["Turn","Turn"]) #Hennepin Specific
+abbList.append(["Turnpike","Tpke"])
+abbList.append(["Underpass","Upas"])
+abbList.append(["Union","Un"])
+abbList.append(["Unions","Uns"])
+abbList.append(["Valley","Vly"])
+abbList.append(["Valleys","Vlys"])
+abbList.append(["Viaduct","Via"])
+abbList.append(["View","Vw"])
+abbList.append(["Views","Vws"])
+abbList.append(["Village","Vlg"])
+abbList.append(["Villages","Vlgs"])
+abbList.append(["Ville","Vl"])
+abbList.append(["Vista","Vis"])
+abbList.append(["Walk","Walk"])
+abbList.append(["Walks","Walk"])
+abbList.append(["Wall","Wall"])
+abbList.append(["Way","Way"])
+abbList.append(["Ways","Ways"])
+abbList.append(["Well","Wl"])
+abbList.append(["Wells","Wls"])
+
+#List of changes for [St_POS_Dir]
+posDirList = [["North","N"],["East","E"],["South","S"],["West","W"],["Northeast","NE"],["Northwest","NW"],["Southeast","SE"],["Southwest","SW"]]
+preDirList = [["North","N"],["East","E"],["South","S"],["West","W"]]
+############################################
+## Read Arguments
+
+if (len(sys.argv) &gt; 1):
+    inFC = sys.argv[1]
+
+############################################
+# General Purpose Functions
+def printit(inputString):
+    try:
+        print(inputString)
+        arcpy.AddMessage(str(inputString))
+    except:
+        pass
+
+def printerror(inputString):
+    print (inputString)
+    arcpy.AddError(inputString)
+
+def getField(inFeatureClass, inFieldName):
+  fieldList = arcpy.ListFields(inFeatureClass)
+  for iField in fieldList:
+    if iField.name.lower() == inFieldName.lower():
+      return iField
+  return None
+
+def fieldExists(inFeatureClass, inFieldName):
+  return getField(inFeatureClass,inFieldName) &lt;&gt; None
+
+############################################
+# Initial QC
+
+def initialQC():
+    if (arcpy.Exists(inFC)):
+        printit("PASS: Feature Class {} Exists".format(inFC))
+    else:
+        printerror("ERROR: Feature Class {} Does Not Exist, Cancelling...".format(inFC))
+        return False
+
+    for iFld in requiredFieldList:
+        if (fieldExists(inFC,iFld)):
+            printit("PASS: Feature Class {} Has Field [{}]".format(inFC,iFld))
+        else:
+            printerror("ERROR: Feature Class {} Does Not Have Field [{}], Cancelling...".format(inFC,iFld))
+            return False
+
+    if not (fieldExists(inFC,newFieldName)):
+        printit("GOOD: Feature Class {} Does Not Already Have Field [{}]".format(inFC,newFieldName))
+        printit(" ADDING Field [{}]".format(newFieldName))
+        try:
+            arcpy.AddField_management(in_table=inFC, field_name=newFieldName, field_type="TEXT", field_precision="", field_scale="", field_length="100", field_alias="", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+        except:
+            printerror("ERROR: Error While Adding Field [{}], Cancelling...".format(newFieldName))
+            return False
+        if not (fieldExists(inFC,newFieldName)):
+            printerror("ERROR: Unable to Add Field [{}], Cancelling...".format(newFieldName))
+            return False
+    else:
+        printerror("ERROR: Feature Class {} Already Has Field [{}], Cancelling...".format(inFC,newFieldName))
+        return False
+
+    return True
+
+############################################
+# Main
+
+def makeSubstitution(inList,inValue,inFieldName):
+    for iAbbreviationPr in inList:
+        if (inValue == iAbbreviationPr[0]): #Found a Match
+            return iAbbreviationPr[1]
+    printit("WARNING: [{}] of {} does not have a value in the abbreviation list! Potential Error...".format(inFieldName,inValue))
+    return inValue
+
+def main():
+    cursorFieldList = requiredFieldList
+    cursorFieldList.append(newFieldName)
+
+    try:
+        iUCursor = arcpy.da.UpdateCursor(inFC,cursorFieldList)
+        iRowCount = 0
+        iRowMax = 1
+        for uRow in iUCursor:
+
+            #Just to give user an indicator that progress is being made
+            if (iRowCount&gt;iRowMax):
+                printit(" {}".format(iRowCount))
+                iRowMax *= 10
+                iRowCount+=1
+
+            abbreviateConcatenatedName = ""
+            iFldIndex = 0
+            for iFld in requiredFieldList:
+
+
+                if (iFld == newFieldName):
+                    uRow[iFldIndex] = abbreviateConcatenatedName
+                    iUCursor.updateRow(uRow)
+                else:
+                    iValue = uRow[iFldIndex].strip() #Strip is just a safe-guard
+
+
+                    if ((iValue != "") and (iValue != None)):
+                        if (iFld == "ST_PRE_DIR"):
+                            iValue= makeSubstitution(preDirList,iValue,"ST_PRE_DIR")
+                        if (iFld == "ST_POS_TYP"):
+                            iValue= makeSubstitution(abbList,iValue,"ST_POS_TYPE")
+                        if (iFld == "ST_POS_DIR"):
+                            iValue = makeSubstitution(posDirList,iValue,"ST_POS_DIR")
+
+                        if (abbreviateConcatenatedName == ""):
+                            abbreviateConcatenatedName = iValue
+                        else:
+                            abbreviateConcatenatedName+=" "+iValue
+                iFldIndex += 1
+
+        del iUCursor
+    except RuntimeError as e:
+        printerror("ERROR: Error {} Occurred, Cancelling...".format(e))
+        try:
+            del iUCursor
+            del uRow
+        except:
+            return False
+    return True
+
+
+if __name__ == '__main__':
+    if (initialQC() == True):
+        if (main() == True):
+            printit("Done!")
+</pre>
+ </p>
+        <hr />        <h1> ArcGIS Pro 2.0 Migration Overview </h1>
+        <p> <p>In April I started a new position at a company that had no existing GIS.</p>
+<p>Nothing.</p>
+<p>There was a definite need for GIS and some GIS-type functions were occuring but basically when I started, I had an <a href="http://server.arcgis.com/en/server/latest/get-started/windows/what-is-arcgis-enterprise-.htm" target="_blank" rel="noopener">ArcGIS Enterprise</a> license and a mess of KML files.</p>
+<p>An exciting opportunity. And since I was starting from scratch, I had zero legacy concerns. No existing data, workflows, custom code, or maps to tie me to a specific software package. Knowing that ArcGIS Pro is taking over the world, I decided to transition to ArcPro and use that as our (GIS staff count of 1) company standard for desktop mapping.</p>
+<p>That plan got side-tracked somewhat when we purchased a data management tool (<a href="http://crescentlink.com/products#manager" target="_blank" rel="noopener">CrescentLink Network Manager</a>) that is only available for ArcMap. But I have still been using Pro on a regular basis.</p>
+<p>I started a brilliant post about the transition&#8211;the pros, the cons, and my overall experience. But before I could finish it, <a href="https://blogs.esri.com/esri/arcgis/2017/06/27/arcgis-pro-2-0-has-been-released/" target="_blank" rel="noopener">out came 2.0</a> and my post was suddenly out-dated. So I&#8217;ve decided to split that post into a bunch of smaller, more focused posts.</p>
+<h4>Overview</h4>
+<p>Without getting into to deep on specific features or functionality, I do have some broad comments to make.</p>
+<h6>Learning Curve</h6>
+<p>There is definitely a learning curve in moving from ArcGIS Desktop to ArcGIS Pro&#8211;even though there is a lot of the same concepts between Pro &amp; Desktop (the Toolboxes have barely changed), just finding the tools was a huge hurdle at first. I&#8217;ve never been a fan of the ribbon interface, I like my tools to be where they are and accessible.</p>
+<p>But with regular use, I have gotten more adept at finding what I want to use. Still end up hunting for tools at times but it has gotten better. I&#8217;m probably at about 75% efficiency as compared to Desktop although I switch between the two on a regular basis because there are times where I just need to get something done.</p>
+<h6>Stability</h6>
+<p>Even though I just had to force-stop a session, 2.0 has made significant strides in stability. I had near daily crashes with 1.5 but now it is maybe a once-a-week. Maybe I&#8217;ve learned what not to do in Pro but I don&#8217;t remember any pattern to the crashes I had with 1.5.</p>
+<h6>Performance</h6>
+<p>Performance is still painful to me. There are too many times when the wait cursor shows up when you do simple things like clicking on a button. A lot of the processing has been routed through the geoprocessing system and it just seems much slower.</p>
+<h4>Version 2.0 Highlights</h4>
+<p>While I&#8217;ll probably do some whining about ArcGIS Pro in this planned series of posts, there were a couple of significant highlights to the 2.0 release that took care of two of my major usability concerns.</p>
+<ul>
+<li style="list-style-type: none;">
+<ul>
+<li>Simultaneously running multiple instances of ArcGIS on the same machine. I did some initial scripting for a data preparation process. The script took a good 15-20 minutes to run. Using 1.5, I had to launch it and then work in something other than ArcGIS Pro. Now I can launch that process and continue to work in a second session.</li>
+<li>Highlighting. Maybe I am just weird but I really missed the ability to highlight records in table. As part of my QC process, I will often select records using a spatial or attribute query and then go through that set and either unselect or reselect them in batches by first highlighting them. This was a huge issue I had with 1.5 especially since it does not seem like it should be difficult functionality to add in. I was going to wait on 2.0 until I saw this functionality.<a href="https://i2.wp.com/maprantala.com/wp-content/uploads/2017/08/Highlight-1.png"><img class="aligncenter wp-image-4715 " src="https://i2.wp.com/maprantala.com/wp-content/uploads/2017/08/Highlight-1.png?resize=886%2C374" alt="" width="886" height="374" data-recalc-dims="1" /></a></li>
+</ul>
+</li>
+</ul>
+<h4>Summary</h4>
+<p>Overall, I&#8217;ve grown accustom to ArcPro. Like any new software, it takes time to get a feel for it. The transition is not that much different from going from ArcView 3.x to ArcGIS Desktop (or whatever 8.x was called). I am not yet as productive in it as Desktop but there are some things I really like about it to go along with my complaints.</p>
+ </p>
+        <hr />        <h1> Esri Web AppBuilder 2.4, Empty Basemap Gallery Follow-Up </h1>
+        <p> <p>A while ago I <a href="http://maprantala.com/2017/04/10/esri-web-appbuilder-2-4-empty-basemap-gallery/" target="_blank" rel="noopener">posted </a>a work-around for a problem I was having with a <a href="http://www.esri.com/software/web-appbuilder" target="_blank" rel="noopener">Web AppBuilder</a> application. Working with Esri tech support, we determined what I was doing to cause the problem.</p>
+<p>In my config.json, I was using a relative path to the proxy. Note that I had the proxy as a separate application at the root level of our domain because I intended to have a shared proxy for all of our applications instead of individual ones. So the WAB application would be using http://ourarcgisdomain.com/proxy/proxy.ashx.</p>
+<pre>   "httpProxy": {
+	"useProxy": true,
+	"alwaysUseProxy": true,
+    "url": "/proxy/proxy.ashx",
+    "rules": []
+  }
+</pre>
+<p>Well, that was causing the hiccup in the <a href="http://doc.arcgis.com/en/web-appbuilder/create-apps/widget-basemap.htm" target="_blank" rel="noopener">Basemap Gallery Widget</a>. I simply modified the url parameter to have the full path of our domain, undid my custom code, and the Basemap Gallery Widget was happy.</p>
+<pre>  "httpProxy": {
+     "useProxy": true,
+     "alwaysUseProxy": true,
+     "url": "http://ourarcgisdomain.com/proxy/proxy.ashx",
+     "rules": []
+   }
+</pre>
+<p>Score one for Esri Tech Support.</p>
+<p>Although, in my defense the <a href="https://developers.arcgis.com/web-appbuilder/api-reference/app-configuration.htm" target="_blank" rel="noopener">documentation on the configuring the proxy</a> is silent on the pathing.</p>
+<p>&nbsp;</p>
+ </p>
+        <hr />        <h1> Esri Web AppBuilder 2.4, Empty Basemap Gallery </h1>
+        <p> <p>I recently downloaded Web AppBuilder 2.4, Developer&#8217;s Edition and built a quick &amp; dirty app. For some reason, it worked fine in Web AppBuilder but once I deployed it, no basemaps would show in the B<a href="http://doc.arcgis.com/en/web-appbuilder/create-apps/widget-basemap.htm">aseman Gallery widget</a>, it would just spin, spin, spin.</p>
+<p><a href="https://i2.wp.com/maprantala.com/wp-content/uploads/2017/04/BasemapGallery.png"><img class="alignnone wp-image-4651" src="https://i2.wp.com/maprantala.com/wp-content/uploads/2017/04/BasemapGallery.png?resize=256%2C365" alt="" width="256" height="365" data-recalc-dims="1" /></a></p>
+<p>Digging around, I found some <a href="https://geonet.esri.com/thread/118906">old posts</a> where users were experiencing similar problems but none of the solution resulted in a great solution. I was able to get it to work by listing the basemaps individually in the config_BasemapGallery.json file but I that was more of a work-around. Notice in the thumbnailUrl, I have to put the full path to the thumbnails. Note that for brevity&#8217;s sake, I&#8217;m only showing one of the basemaps in this sample.</p>
+<pre>{
+  "basemapGallery": {
+    "showArcGISBasemaps": true,
+    "basemaps": [{
+      "layers": [{"url": "http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"}],
+      "title": "Imagery",
+      "thumbnailUrl": "http://&lt;org&gt;.maps.arcgis.com/sharing/rest/content/items/&lt;id&gt;/info/thumbnail/tempimagery.jpg",
+      "spatialReference": {
+         "wkid": "102100"
+      }
+     }]
+   }
+}</pre>
+<p>Eventually, I started comparing the requests generated by the version in the development version and the one in production and tracked the problem down to this POST request in production, which was returning a 400 Bad Request error:</p>
+<pre>http://&lt;server&gt;/proxy/proxy.ashx?https://&lt;org&gt;.maps.arcgis.com/sharing/rest/search&amp;wab_dv=2.4
+</pre>
+<p>To this one in dev:</p>
+<pre>https://&lt;org&gt;.maps.arcgis.com/sharing/rest/search</pre>
+<p>I stripped off the &#8220;&amp;wab_dv=2.4&#8221; parameter from the production request and Boom! it worked. So I now knew what was causing the problem. Just had to figure out why it was occurring. I had actually already seen part of the answer while digging around in <strong>env.js </strong>while looking for a way to test my changes without having to clear my cache or remember to use an Incognito session. On line 81 of <strong>env.js</strong>, there is this variable, <strong>deployVersion</strong> which is set to 2.4.</p>
+<p><a href="https://i2.wp.com/maprantala.com/wp-content/uploads/2017/04/deployVersion.png"><img class="alignnone size-full wp-image-4653" src="https://i2.wp.com/maprantala.com/wp-content/uploads/2017/04/deployVersion.png?resize=596%2C82" alt="" width="596" height="82" data-recalc-dims="1" /></a><br />
+I had recently worked on a solution that involved appending a time stamp onto scripts we were loading so I was familiar with what is going on&#8211;the code was appending a version onto the call so that if you change the <strong>deployVersion</strong>, the browser would load a new version of the code. The <strong>appendDeployVersion</strong> function on line 307 of <strong>env.js</strong> was doing the append. Notice the <strong>if</strong> statement on line 312, it checks for &#8220;?&#8221; in the url. If it finds one, it appends &#8220;<strong>&amp;</strong>wab_dv=&#8221; and the version, otherwise it appends &#8220;<strong>?</strong>wab_dv=&#8221; and the version&#8211;the difference being the &#8220;&amp;&#8221; vs &#8220;?&#8221;. A question mark is used before the first parameter in an URL, each additional parameter is separated by a ampersand (&amp;) so that logic makes sense.</p>
+<p><a href="https://i2.wp.com/maprantala.com/wp-content/uploads/2017/04/IfStatement.png"><img class="alignnone size-full wp-image-4654" src="https://i2.wp.com/maprantala.com/wp-content/uploads/2017/04/IfStatement.png?resize=755%2C196" alt="" width="755" height="196" data-recalc-dims="1" /></a></p>
+<p>However, the monkey wrench is that I&#8217;m using a proxy, so my URL has a question mark related to the proxy:</p>
+<pre>http://&lt;server&gt;/proxy/proxy.ashx<strong>?</strong>https://&lt;org&gt;.maps.arcgis.com/sharing/rest/search&amp;wab_dv=2.4
+</pre>
+<p>So the code was dutifully appending an ampersand and the version parameter &#8220;&amp;wab_dv=2.4&#8221; to my URL so the proxy would be requesting:</p>
+<pre>https://&lt;org&gt;.maps.arcgis.com/sharing/rest/search&amp;wab_dv=2.4
+</pre>
+<p>when it should have been requesting:</p>
+<pre>https://&lt;org&gt;.maps.arcgis.com/sharing/rest/search?wab_dv=2.4
+</pre>
+<p>Once I had determined the problem (99% of the battle), I was able to quickly put in a patch that works for my instance. This patch isn&#8217;t a great one that Esri should use but it solves it in my case. I just added logic so that it would ignore proxy-related question marks:</p>
+<p><a href="https://i0.wp.com/maprantala.com/wp-content/uploads/2017/04/solution.png"><img class="alignnone size-full wp-image-4655" src="https://i0.wp.com/maprantala.com/wp-content/uploads/2017/04/solution.png?resize=764%2C214" alt="" width="764" height="214" data-recalc-dims="1" /></a></p>
+<pre>function appendDeployVersion(url){
+    if(/^http(s)?:\/\//.test(url) || /^\/proxy\.js/.test(url) || /^\/\//.test(url)){
+      return url;
+    }
+
+	var proxyURL = url.toLowerCase().replace(".ashx?","");
+    if(proxyURL.indexOf('?') &gt; -1){
+      url = url + '&amp;wab_dv=' + deployVersion;
+    }else{
+      url = url + '?wab_dv=' + deployVersion;
+    }
+    return url;
+  }
+</pre>
+<p>And voila! my Web AppBuilder now had all the basemaps options a mapineer could hope for:<br />
+<a href="https://i0.wp.com/maprantala.com/wp-content/uploads/2017/04/BaemapsAplenty.png"><img class="alignnone size-full wp-image-4656" src="https://i0.wp.com/maprantala.com/wp-content/uploads/2017/04/BaemapsAplenty.png?resize=366%2C487" alt="" width="366" height="487" data-recalc-dims="1" /></a></p>
+ </p>
+        <hr />        <h1> 2016 Grandma's Marathon Map </h1>
+        <p> <p>A Little Map I made for fun for Grandma&#8217;s Marathon ( <a href="https://twitter.com/grandmasmara">@grandmasmara</a> ) or click <a href="http://GrandmasMarathonMap.Com/" target="_blank">Here </a>for the stand-alone map.</p>
+<p>
+<!-- iframe plugin v.4.5 wordpress.org/plugins/iframe/ -->
+<iframe src="http://GrandmasMarathonMap.com/" width="100%" height="500px" scrolling="yes" class="iframe-class" frameborder="0"></iframe>
+</p>
+ </p>
+        <hr />        <h1> Converting MXD to Layer file in Arcpy </h1>
+        <p> <p>Working on doing some <a href="http://resources.arcgis.com/EN/HELP/MAIN/10.1/index.html#//01540000056t000000" target="_blank">advanced ArcGIS server printing</a>&nbsp;and had the need to batch convert many existing .mxd files to .lyr files. So instead of opening up X number of map documents, thought I would do it via code. All of my .mxds in this case had just one data frame so the process was pretty simple&#8211;I add an empty group layer (Thanks <a href="http://gis.stackexchange.com/users/434/petr-krebs" target="_blank">Petr Krebs</a> for the idea), copy all the existing layers into it, and save it out as a layer file.</p>
+<p>I created an ArcGIS toolbox with two options&#8211;one to convert a single .mxd and one to batch convert an entire folder. To use it, make sure to have the EmptyGroup.lyr in the same directory as the .py file.</p>
+<p>Here is the raw code or<a href="https://github.com/MapRantala/Blog/tree/master/ArcToolbox/ArcGIS/20150814_ConvertMxd2Lyr" target="_blank"> git it</a>:</p>
+<pre>
+
+import os
+import arcpy
+import inspect
+import glob
+import uuid
+import inspect
+
+codeDir = os.path.dirname(inspect.getfile(inspect.currentframe()))
+EmptyGroupLayerFile = codeDir+"/EmptyGroup.lyr"
+inArg1 = sys.argv[1]
+inArg2 = sys.argv[2]
+
+def printit(inMessage):
+    arcpy.AddMessage(inMessage)
+
+def makeLyrFromMXD(inMXD, outLyr):
+    if not (os.path.exists(inMXD)):
+        printit( "ERROR: {} does not exist".format(inMXD))
+        return False
+    if not (os.path.exists(EmptyGroupLayerFile)):
+        printit( "ERROR: {} does not exist".format(EmptyGroupLayerFile))
+        return False
+    if  (os.path.exists(outLyr)):
+        printit( "Skipping: {} already exists".format(outLyr))
+        return True
+
+    printit( "Making Layer file: {0}".format(outLyr))
+
+    mxd = arcpy.mapping.MapDocument(inMXD)
+    ###Right now, just doing the first Dataframe, this could be modified
+    df = arcpy.mapping.ListDataFrames(mxd)[0]
+
+    theUUID = str(uuid.uuid1())
+
+    iGroupLayerRaw = arcpy.mapping.Layer(EmptyGroupLayerFile)
+    iGroupLayerRaw.name = theUUID
+    arcpy.mapping.AddLayer(df,iGroupLayerRaw,"TOP")
+    groupBaseName = os.path.basename(outLyr).split(".")[0]
+
+    for lyr in arcpy.mapping.ListLayers(df):
+        if not (lyr.name == theUUID):
+            if (lyr.longName == lyr.name):
+                arcpy.mapping.AddLayerToGroup (df, iGroupLayer, lyr, "Bottom")
+        else:
+            iGroupLayer = lyr
+
+    iGroupLayer.name = groupBaseName
+    arcpy.SaveToLayerFile_management(iGroupLayer, outLyr)
+    return os.path.exists(outLyr)
+
+def doMultiple(inDir,outDir):
+    for iMxd in glob.glob(inDir+"/*.mxd"):
+        lyrFile = outDir+"/"+os.path.basename(iMxd).lower().replace(".mxd",".lyr")
+        makeLyrFromMXD(iMxd, lyrFile)
+
+if(not os.path.exists(EmptyGroupLayerFile)):
+    printit("Error: {} is missing, can not run.".format(EmptyGroupLayerFile))
+else:
+    if (os.path.isdir(inArg1) and (os.path.isdir(inArg2))):
+        doMultiple(inArg1,inArg2)
+    elif (os.path.isfile(inArg1)):
+        if (os.path.exists(inArg2)):
+            printit("Error: {} already exists".format(inArg2))
+        else:
+            makeLyrFromMXD(inArg1,inArg2)
+    else:
+        printit("Unable to understand input parameters")
+</pre>
+ </p>
+        <hr />        <h1> Calling os.startfile and webbrowser.open from ArcGIS </h1>
+        <p> <p>Recently I&#8217;ve created <a href="http://resources.arcgis.com/en/help/main/10.2/index.html#//014p00000025000000" target="_blank">Python add-ins</a> for data entry for our staff. Most of these have a toolbar with a &#8220;Help&#8221; button that opens a help file in .pdf format.</p>
+<p><figure id="attachment_4515" aria-describedby="caption-attachment-4515" style="width: 339px" class="wp-caption alignnone"><a href="https://i0.wp.com/maprantala.com/wp-content/uploads/2014/12/Toolbar.png"><img class="size-full wp-image-4515" src="https://i0.wp.com/maprantala.com/wp-content/uploads/2014/12/Toolbar.png?resize=339%2C66" alt="Sample python add-in toolbar." width="339" height="66" data-recalc-dims="1" /></a><figcaption id="caption-attachment-4515" class="wp-caption-text">Sample python add-in toolbar.</figcaption></figure></p>
+<p>The first add-in was for ArcCatalog and this worked splendidly. I was using os.startfile(<em>path to help.pdf</em>).</p>
+<p>However, when I started doing ArcMap add-ins, clicking the Help button would open the help.pdf but ArcMap would crash. Oops!</p>
+<p>Luckily the <a href="https://twitter.com/arcpy" target="_blank">Python development team at Esri</a> already had a <a href="https://arcpy.wordpress.com/2013/10/25/using-os-startfile-and-webbrowser-open-in-arcgis-for-desktop/" target="_blank">blog post</a> about this at their <a href="https://arcpy.wordpress.com/" target="_blank">ArcPy Café blog</a>.</p>
+<p>They report that the root of the problem is &#8220;conflicts in the way the Windows libraries expect to be called, they can fail or crash when called within ArcGIS for Desktop in an add-in script or geoprocessing script tool&#8221;. But this can be overcome by using a <a href="http://en.wikipedia.org/wiki/Decorator_pattern" target="_blank">decorator</a> function that calls os.startfile from a new thread. Another function effected by these conflicts is webbrowser.open.</p>
+<p>Example code is shown below:</p>
+<pre>import functools
+import os
+import threading
+import webbrowser
+ 
+# A decorator that will run its wrapped function in a new thread
+def run_in_other_thread(function):
+    # functool.wraps will copy over the docstring and some other metadata
+    # from the original function
+    @functools.wraps(function)
+    def fn_(*args, **kwargs):
+        thread = threading.Thread(target=function, args=args, kwargs=kwargs)
+        thread.start()
+        thread.join()
+    return fn_
+ 
+# Our new wrapped versions of os.startfile and webbrowser.open
+startfile = run_in_other_thread(os.startfile)
+openbrowser = run_in_other_thread(webbrowser.open)</pre>
+<p>Then whenever you call startfile or openbrowser, it will be routed through your decorator function and, as far as I&#8217;ve been able to tell, works fine without crashing your ArcMap session.</p>
+<p>Cheers! </p>
+ </p>
+        <hr />        <h1> Quick & Dirty Arcpy: Verify a Coded Value Domain Code </h1>
+        <p> <p>I&#8217;ve been working on a few different data import routines and one of the things I recently built was the ability to verify that a potential Code to be entered into a field with a <a href="http://resources.arcgis.com/en/help/main/10.2/index.html#//001s00000001000000" target="_blank">Coded Value Domain</a> is valid.</p>
+<p>The logic of the code is pretty straight-forward. Get a field&#8217;s domain and check that a potential value is one of the code values. The biggest &#8220;trick&#8221; in this code is that <a href="http://resources.arcgis.com/en/help/main/10.2/index.html#//018w0000001z000000" target="_blank">arcpy.da.ListDomains</a>, which locates a field&#8217;s domain, takes a geodatabase (or Enterprise geodatabase connection file) as its only parameter. The documentation says it takes a workspace, but it does not like a feature dataset, which a feature class might be in.</p>
+<p>A couple caveats about the code. It only returns True if a field exists, has a coded value domain, and the value tested is one of the (case-sensitive) valid codes. While I have an ArcToolbox tool to call it for illustration purposes, I&#8217;m only calling it from code so I wanted tight requirements. </p>
+<p>Anyhow, here is the code or <a href="https://github.com/MapRantala/Blog/tree/master/python/arcpy/20141218_VerifyDomainValue" target="_blank">download it</a> from GitHub.</p>
+<pre>
+import arcpy
+
+inFeatureClass = sys.argv[1]
+inField = sys.argv[2]
+inValue = sys.argv[3]
+
+# getFeatureClassParentWorkspace: This script gets the geodatabase for a
+# feature class. The trick here is that feature classes can be within a
+# feature dataset so you need to account for two possible levels in the
+# directory structure.
+def getFeatureClassParentWorkspace(inFeatureClass):
+    describeFC = arcpy.Describe(inFeatureClass)
+    if (describeFC.dataType == 'FeatureClass') or (describeFC.dataType == 'Table'):
+        workspace1 = describeFC.path
+        describeWorkspace1 = arcpy.Describe(workspace1)
+        if (describeWorkspace1.dataType == 'FeatureDataset'):
+            return describeWorkspace1.path
+        return workspace1
+
+    return None
+
+# Find a field within a feature class
+def getField(inFeatureClass, inFieldName):
+  fieldList = arcpy.ListFields(inFeatureClass)
+  for iField in fieldList:
+    if iField.name.lower() == inFieldName.lower():
+      return iField
+  return None
+
+#Get a field's domain
+def getDomain(inFeatureClass, inField):
+    theField = getField(inFeatureClass,inField)
+    if (theField <> None):
+        searchDomainName = theField.domain
+        if (searchDomainName <> ""):
+            for iDomain in arcpy.da.ListDomains(getFeatureClassParentWorkspace(inFeatureClass)):
+                if iDomain.name == searchDomainName:
+                    return iDomain
+    return None
+
+#Get the domain.
+def validDomainValue(inFeatureClass,inField,inValue):
+    theDomain = getDomain(inFeatureClass,inField)
+
+    if not (theDomain is None):
+        if (theDomain.domainType == "CodedValue"):
+            if theDomain.codedValues.has_key(inValue):
+                return True
+    return False
+
+if (validDomainValue(inFeatureClass,inField,inValue)):
+    arcpy.AddMessage("Value ({0}) is valid for field [{1}].".format(inValue,inField))
+else:
+    arcpy.AddError("ERROR: Value ({0}) is invalid for field [{1}].".format(inValue,inField))
+</pre>
+ </p>
+        <hr />        <h1> Quick & Dirty ArcPy: Listing Data Sources </h1>
+        <p> <p>I just had the need to go through a directory containing many (100+) layer files (.lyr) and verify the data sources in each. I could have loaded each into ArcMap and checked the properties, but choose not to.  Here&#8217;s the <a href="https://github.com/MapRantala/Blog/blob/master/python/arcpy/20141203_ListDataSources/listDataSources.py">bare-bones script</a> I used instead:</p>
+<pre>
+import arcpy, glob,os
+
+theDir = r"L:\gdrs\data\org\us_mn_state_dnr\elev_minnesota_lidar\\"
+os.chdir(theDir)
+
+for iFile in glob.glob("*.lyr"):
+    print iFile
+    lyr = arcpy.mapping.Layer(iFile)
+    for i in arcpy.mapping.ListLayers(lyr):
+        try:
+            print "    {0}: {1}".format(i,i.dataSource)
+        except:
+            print "    {0}: Does not support dataSource".format(i)
+
+print "Done!"
+
+</pre>
+ </p>
+        <hr />        <h1> ArcMap Field Calculator: Python Nulls (None) </h1>
+        <p> <p>I&#8217;ve been asked this twice this week, so thought I should post it. Calculating Null values in the ArcMap Field Calculator is easy, if you can remember the right work for &#8220;Null&#8221;. The proper word is &#8220;None&#8221; (without the quotes). Good luck &#038; have a good weekend.</p>
+<p><a href="https://i2.wp.com/maprantala.com/wp-content/uploads/2014/10/None.png"><img src="https://i2.wp.com/maprantala.com/wp-content/uploads/2014/10/None.png?resize=488%2C579" alt="None" width="488" height="579" class="alignnone size-full wp-image-978" data-recalc-dims="1" /></a></p>
+ </p>
+        <hr />        <h1> Quick & Dirty arcpy: Compare Feature Class Table Schemas </h1>
+        <p> <p>I&#8217;m in the process of rewriting a process, moving most of the processing from arcpy to postgresql-enabled python (love me some <a href="http://initd.org/psycopg/" target="_blank">psycopg2</a>).</p>
+<p>One of the QC checks I&#8217;m doing at the end of this re-write is just verifying that the feature class schemas are the same (or that the differences are intended)&nbsp; under the new process as they were in the old process.</p>
+<p>And while ArcGIS does have a <a href="http://resources.arcgis.com/en/help/main/10.1/index.html#//001700000007000000" target="_blank">good tool</a> for this, there were a couple tweaks I wanted to make. Most notably, I wanted a list of fields that are not in both feature classes.</p>
+<p><a href="https://i1.wp.com/maprantala.com/wp-content/uploads/2014/07/TableCompare.png"><img class="alignnone size-full wp-image-957" src="https://i1.wp.com/maprantala.com/wp-content/uploads/2014/07/TableCompare.png?resize=801%2C266" alt="ArcGIS Table Compare" width="801" height="266" data-recalc-dims="1" /></a></p>
+<p>So I made a quick &#038; dirty script to do that, nothing especially clever but I&#8217;ve found it useful. Download it from <a href="https://github.com/MapRantala/Blog/tree/master/ArcToolbox/ArcGIS_10_2/20140702_CompareTableFields">GitHub</a>. I have it currently set up to work on feature layers but you should be able to change the toolbox parameter types to allow feature classes or tables.</p>
+<pre>
+import arcpy,sys,os
+
+def printit(inMessage):
+    print inMessage
+    arcpy.AddMessage(inMessage)
+
+featureclass1 = sys.argv[1]
+featureclass2 = sys.argv[2]
+
+tableheaders = 'name, type, width, precision, domain'
+
+def makeFieldDict(inFC):
+    d = arcpy.Describe(inFC)
+    printit("Dataset: "+d.baseName)
+    printit("Type: "+d.dataType)
+    printit("Path: "+d.catalogPath)
+    printit(" ")
+
+    lFields=arcpy.ListFields(inFC)
+
+    printit (tableheaders)
+    fieldDict = dict()
+    printit (lFields)
+    for lf in lFields:
+        fieldDict[lf.name] = [lf.name,lf.type,lf.length,lf.precision,lf.domain]
+        printit (lf.name+", "+lf.type +", "+str(lf.length)+", "+str(lf.precision)+", "+lf.domain)
+    return fieldDict
+
+fieldDict1 = makeFieldDict(featureclass1)
+fieldDict2 = makeFieldDict(featureclass2)
+errorList = []
+printit(" ")
+printit(" ")
+printit("Comparing Fields:")
+for iField in sorted(list(set(fieldDict1.keys()+fieldDict2.keys()))):
+    if not (fieldDict1.has_key(iField)):
+        theResult = " {0} not found in {1}".format(iField,featureclass1)
+        errorList.append(theResult)
+    elif not (fieldDict2.has_key(iField)):
+        theResult = " {0} not found in {1}".format(iField,featureclass2)
+        errorList.append(theResult)
+    else:
+        if (fieldDict1[iField] == fieldDict2[iField]):
+            theResult = " {0} OK".format(iField)
+        else:
+            theResult = " {0} Have Different Definitions \n   {1}: {2}\n   {3}: {4}".format(iField,featureclass1,fieldDict1[iField],featureclass2,fieldDict2[iField])
+            errorList.append(theResult)
+
+    printit( theResult )
+
+printit(" ")
+printit(" ")
+if len(errorList) == 0:
+    printit("GOOD! No difference Found!")
+else:
+    printit("These Differences Found:")
+    for iError in errorList:
+        printit(iError)
+
+printit("Done!")
+</pre>
+ </p>
+        <hr />        <h1> Garmin GPX to Shapefile (SHP) conversion GPX2Shp.py </h1>
+        <p> <p>I mentioned using <a href="https://tapiriik.com" target="_blank">Tapiriik</a> to batch download my entire Garmin Connect history&#8211;over 1,000 separate .GPX files. I found several tools to convert .<a href="http://arcscripts.esri.com/details.asp?dbid=16797" target="_blank">GPX to shapefiles</a> that worked but none seemed to recognize my heart rate data.</p>
+<p>The trick is Garmin extends the GPX specification to incorporate the heart rate:</p>
+<pre><span style="color: #333333;">xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"</span></pre>
+<p>Each track point looks like this:</p>
+<div id="LC15" class="line">     &lt;trkpt lat=&#8221;43.68346489146352&#8243; lon=&#8221;-92.99583793468773&#8243;&gt;</div>
+<div id="LC16" class="line">        <time>2014-03-16T20:35:47+00:00</time></div>
+<div id="LC17" class="line">        &lt;ele&gt;296.20001220703125</div>
+<div id="LC18" class="line">        &lt;extensions&gt;</div>
+<div id="LC19" class="line">          &lt;gpxtpx:TrackPointExtension&gt;</div>
+<div id="LC20" class="line">            &lt;gpxtpx:hr&gt;86</div>
+<div id="LC21" class="line">          <!--<span class="hiddenSpellError" pre="" data-mce-bogus="1"-->gpxtpx:TrackPointExtension&gt;</div>
+<div id="LC22" class="line">        &lt;/extensions&gt;</div>
+<div id="LC23" class="line">      <!--<span class="hiddenSpellError" pre="" data-mce-bogus="1"-->trkpt&gt;</div>
+<p>&nbsp;</p>
+<p>Since the first few exiting GPX converters failed to meet my needs, I decided to make my own, at least partially.</p>
+<p>I used Joel Lawhead of <a href="http://geospatialpython.com" target="_blank">GeospatialPython.com</a>&#8216;s <a href="https://code.google.com/p/pyshp/" target="_blank">pyshp</a> library to handle writing the shapefile. I added some basic loop and I stuck a template.prj in the workspace that gets copied once for each shapefile.</p>
+<p>Otherwise, nothing too fancy going on.  The code can be downloaded from <a href="https://github.com/MapRantala/Blog/tree/master/python/python/20140516_GPX2SHP">Github</a>.</p>
+<pre>import glob, os
+import xml.etree.ElementTree as ET
+import shapefile
+import shutil
+
+theNS = "{http://www.topografix.com/GPX/1/1}".lower()
+theNS2 = "{http://www.garmin.com/xmlschemas/TrackPointExtension/v1}".lower()
+templatePRJfile = "template.prj"
+
+def elementIs(inElement,inTag):
+    item1 = inTag.lower()
+    item2 = elementName(inElement)
+    return (inTag.lower() == elementName(inElement).lower())
+
+def elementName(inElement):
+    item1= inElement.tag.lower().replace(theNS,"").replace(theNS2,"")
+    return item1
+
+def convertTimeToSeconds(inTime):
+    theSeconds = -1
+
+    if (inTime.count(":")) == 2:
+        try:
+            inHour = inTime.split(":")[0]
+            inMin = inTime.split(":")[1]
+            inSec = inTime.split(":")[2]
+
+            totalSec = float(inSec)
+            totalSec += (float(inMin) * 60)
+            totalSec += (float(inHour) * 3600)
+            theSeconds = totalSec
+        except:
+            pass
+
+    return theSeconds
+
+
+def writeSHP(inSourceFile,inTrkList):
+    w = shapefile.Writer(shapefile.POINT)
+    w.field("file")
+    w.field("segment","N","8",0)
+    w.field("vertex","N","8",0)
+    w.field("datetime","C",30)
+    w.field("date","C","10",0)
+    w.field("time","C","8",0)
+    w.field("sec","N","8",0)
+    w.field("isec","N","8",0)
+    w.field("totsec","N","8",0)
+    w.field("elev","N","24",14)
+    w.field("hr","N","8",0)
+    w.field("last","N","1",0)
+    w.field("lat","N","24",16)
+    w.field("lon","N","24",16)
+
+    iTrkSegIndex = 0
+    startSec =-1
+    prevSec = -1
+    for iTrkSeg in inTrkList:
+        iTrkPtIndex = 0
+        for iTrkPtDict in iTrkSeg:
+            thisLine = "{0},{1},{2},*time*,*ele*,*hr*,*lat*,*lon*".format(inSourceFile,iTrkSegIndex,iTrkPtIndex)
+
+            theLat = None
+            if (iTrkPtDict.has_key('lat')):
+                try:
+                    theLat = float(iTrkPtDict['lat'])
+                except:
+                    pass
+
+            theLon = None
+
+            if (iTrkPtDict.has_key('lon')):
+                try:
+                    theLon = float(iTrkPtDict['lon'])
+                except:
+                    pass
+
+            theDate = None
+            theTime = None
+            theSeconds = -1
+            segSeconds = -1
+            totSeconds = -1
+
+            if (iTrkPtDict.has_key('time')):
+                theDateTime = iTrkPtDict['time']
+                if ("T" in theDateTime):
+                    theDate = theDateTime.split("T")[0]
+                    theTimePlue = theDateTime.split("T")[1]
+                    if ("+" in theTimePlue):
+                        theTime = theTimePlue.split("+")[0]
+                        theSeconds = convertTimeToSeconds(theTime)
+
+                        if (prevSec &lt; 0):
+                            prevSec = theSeconds
+                        if (startSec&lt;0):
+                            startSec = theSeconds
+
+                        segSeconds = theSeconds - prevSec
+                        prevSec = theSeconds
+                        totSeconds = theSeconds - startSec
+            else:
+                theDateTime = None
+
+            if (iTrkPtDict.has_key('ele')):
+                theElev = iTrkPtDict['ele']
+            else:
+                theElev = None
+
+            if (iTrkPtDict.has_key('hr')):
+                theHR = iTrkPtDict['hr']
+            else:
+                theHR = None
+
+            if (iTrkPtIndex == len(iTrkSeg) - 1):
+                theLast = 1
+            else:
+                theLast = 0
+
+            w.point(theLon, theLat)
+            try:
+                                  w.record(inSourceFile.replace(".gpx",""),iTrkSegIndex,iTrkPtIndex,theDateTime,theDate,theTime,theSeconds,segSeconds,totSeconds,theElev,theHR,theLast,theLat,theLon)
+
+            except:
+                print "############## ERROR ####################"
+            iTrkPtIndex+=1
+
+        iTrkSegIndex+=1
+
+
+    w.save(inSourceFile.lower().replace(".gpx",""))
+    w = None
+    if (os.path.exists(templatePRJfile)):
+        newPRJFN = inSourceFile.lower().replace(".gpx",".prj")
+        shutil.copyfile(templatePRJfile,newPRJFN)
+
+def mainLoop():
+    for iFile in glob.glob("*.gpx"):
+        print iFile
+        tree = ET.parse(iFile)
+        root=tree.getroot()
+
+        theTrkList = []
+
+        for iRoot in root:
+            if elementIs(iRoot,"trk"): #"http://www.topografix.com/gpx/1/1}trk" in iRoot.tag.lower():
+                for iTrkSeg in iRoot:
+                    if not elementIs(iTrkSeg,"trkseg"):
+                        continue
+                    thisTrk = []
+
+                    pntIndex = 0
+                    for iTrkPt in iTrkSeg:
+                        if not elementIs(iTrkPt,"trkpt"):
+                            continue
+                        trkPntDict = dict()
+                        trkPntDict["pntIndex"] = pntIndex
+                        trkPntDict['lat'] = iTrkPt.get('lat')
+                        trkPntDict['lon'] = iTrkPt.get('lon')
+
+                        pntIndex+=1
+                        for iElem in iTrkPt:
+                            if elementIs(iElem,"extensions"):
+                                for iSubElem in iElem:
+                                    if (elementIs(iSubElem,"TrackPointExtension")):
+                                        for iExtensionElem in iSubElem:
+                                            if elementIs(iExtensionElem,"hr"):
+                                                trkPntDict[elementName(iExtensionElem)] = iExtensionElem.text
+                            else:
+                                trkPntDict[elementName(iElem)] = iElem.text
+
+                        #print trkPntDict
+                        thisTrk.append(trkPntDict)
+
+                    theTrkList.append(thisTrk)
+        writeSHP(iFile.lower(), theTrkList)
+
+
+theLineList = mainLoop()
+</pre>
+<p>&nbsp;</p>
+ </p>
+        <hr />        <h1> Zipping a Shapefile from ArcCatalog </h1>
+        <p> <p>Back in 2010, I posted a <a href="http://maprantala.com/2010/12/10/zipping-a-shapefile-using-python/" target="_blank">python script </a>and an <a href="http://maprantala.com/2010/12/15/zipping-a-shapefile-via-arctoolbox/" target="_blank">ArcToolbox</a> tool for zipping a shapefile.</p>
+<p>Well, I had a request to modify the code so it would not error out if it encounters a .lock file. While .lock files exist for a reason and shouldn&#8217;t be totally ignored, in some cases it is safe to do so, so I went ahead any modified the code, which can be downloaded from <a href="https://github.com/MapRantala/Blog/tree/master/ArcToolbox/ArcGIS_9.3/20101215_ZipShapefileFromArcToolbox" target="_blank">Github</a>.</p>
+<p>The guts of the code is here, though:</p>
+<pre>
+import zipfile
+import sys
+import os
+import glob
+
+theShapeFile = sys.argv[1]
+outputZipFile = sys.argv[2]
+skipLockFile = sys.argv[3]
+
+def zipShapefile(inShapefile, newZipFN, skipLockFile):
+    print 'Starting to Zip '+inShapefile+' to '+newZipFN
+
+    if not (os.path.exists(inShapefile)):
+        print inShapefile + ' Does Not Exist'
+        return False
+
+    if (os.path.exists(newZipFN)):
+        print 'Deleting '+newZipFN
+        os.remove(newZipFN)
+
+        if (os.path.exists(newZipFN)):
+            print 'Unable to Delete'+newZipFN
+            return False
+
+    zipobj = zipfile.ZipFile(newZipFN,'w')
+
+    for infile in glob.glob( inShapefile.lower().replace(".shp",".*")):
+        print infile
+        if not ((os.path.splitext(infile.lower())[1] == ".lock") and (skipLockFile.lower() == "true")):
+            zipobj.write(infile,os.path.basename(infile),zipfile.ZIP_DEFLATED)
+
+    zipobj.close()
+
+    return True
+
+zipShapefile(theShapeFile,outputZipFile,skipLockFile)
+print "done!"
+</pre>
+ </p>
+        <hr />        <h1> Friday Fave: Geodatabase Geek </h1>
+        <p> <p>This <a href="http://maprantala.com/category/friday-fave/">Friday Fave</a> is more for utility than pleasure.</p>
+<p>Unfortunately, I have been working to determine why my views and query layers perform so much worse than directly accessing my feature class.</p>
+<p>My Googling led me to <a href="http://gdbgeek.wordpress.com/" target="_blank">Geodatabase Geek</a>, by Trevor Hart, <a href="http://www.eagle.co.nz/" target="_blank">Eagle Technology Group Ltd</a>.  Trevor has some real good information about Geodatabases and also  gave a good lightening talk on <a href="http://video.esri.com/watch/2481/usage-reporting-on-arcgis-101-for-server">Usage Reporting on ArcGIS 10.1 for Server </a>at the 2013 ESRI International Developer&#8217;s Conference.</p>
+<p>One tool he pointed out was <a href="https://www.arcgis.com/home/item.html?id=a269d03aa1c840638680e2902dadecac" target="_blank">Mxdperfstat</a> for benchmarking the performance of your MXD. Trevor used it to compare the performance of a <a href="http://gdbgeek.wordpress.com/2014/01/15/feature-class-vs-query-layer-vs-spatial-view/" target="_blank">Feature Class vs Query Layer vs Spatial View</a>. While the official version is available for ArcGIS 9.3 through 10.2, I do want to point out <a href="http://www.husseinnasser.com/2013/04/mxdperfstat-101-download-mxd.html" target="_blank">Hussein Nasser&#8217;s 10.1 version</a> which he put out before the official 10.1 version came out (it&#8217;s not really a version, more of a work-around but I like his ingenuity).</p>
+<p>My results were significantly different on our 10.0 database server, the spatial view I was testing was much slower.  The query for both the spatial view and query layer was simply &#8220;Select * from <em>featureclass</em>&#8221;</p>
+<p>So not sure what to make of the performance yet, I&#8217;ve got a spatial index made so not sure what else I can try.</p>
+<p><figure id="attachment_936" aria-describedby="caption-attachment-936" style="width: 597px" class="wp-caption alignnone"><a href="https://i1.wp.com/maprantala.com/wp-content/uploads/2014/05/MGSDB1.png"><img class=" wp-image-936" src="https://i1.wp.com/maprantala.com/wp-content/uploads/2014/05/MGSDB1-300x136.png?resize=597%2C271" alt="ArcSDE 10.0 Performance" width="597" height="271" data-recalc-dims="1" /></a><figcaption id="caption-attachment-936" class="wp-caption-text">ArcSDE 10.0 Performance</figcaption></figure></p>
+<p>&nbsp;</p>
+ </p>
+        <hr />        <h1> Tip & Tricks: Register SQL View with Geodatabase via command line </h1>
+        <p> <p>The official ESRI documentation on</p>
+<p>&nbsp;</p>
+<p>http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#//0029000000s8000000</p>
+ </p>
+        <hr />        <h1> Friday Fave: Tapiriik </h1>
+        <p> <p>This <a href="http://maprantala.com/category/fun-maps/friday-fave/">Friday Fave</a> is a little bit different.</p>
+<p>My interest in geospatial technologies (although we just called it GIS back then) largely because I wanted to measure my running routes more accurately and efficiently than the paper map &amp; scrap of paper method I was using in the early 90s. When I was introduced to GIS, I knew what I was going to use it for.</p>
+<p>Now that GPS technology is ubiquitous&#8211;I&#8217;m currently using four different GPS devices, at the same time, on my bike rides&#8211;I seldom have to use a map to measure my routes. I may still use <a href="http://www.mapmyrun.com" target="_blank">MapMyRun.com</a> to plan a route ahead of time if I&#8217;m running in a new area or trying to plan a loop of a certain distance but GPS has really made it so simple to just go out and run.</p>
+<p>While there are several GPS options available, I have used Garmin ever since their 405 Forerunner came out. This was their first watch that didn&#8217;t get confused for a Timex-Sinclair 1000 strapped to your wrist.</p>
+<p><figure id="attachment_928" aria-describedby="caption-attachment-928" style="width: 300px" class="wp-caption alignnone"><a href="https://i2.wp.com/maprantala.com/wp-content/uploads/2014/04/Zx81-timex-manipulated2.jpg"><img class="size-medium wp-image-928" src="https://i0.wp.com/maprantala.com/wp-content/uploads/2014/04/Zx81-timex-manipulated2-300x270.jpg?resize=300%2C270" alt="Timex Sinclair 1000" width="300" height="270" data-recalc-dims="1" /></a><figcaption id="caption-attachment-928" class="wp-caption-text">Timex Sinclair 1000</figcaption></figure></p>
+<p>Garmin&#8217;s watches upload their data to <a href="https://tapiriik.com/" target="_blank">Gamin Connect,</a> which works fine, but for a project I recently started, I wanted to down load all my data which Garmin Connect does not make easy. I had over 1,000 data logs and downloading them individually was not going to happen.</p>
+<p>A little Googling led me to <a href="https://tapiriik.com/" target="_blank">tapiriik.com</a>, which allows you to share data amongst several different online services that endurance athletes might use including Runkeeper, Strava, Garmin Connect, SportTracks, DropBox.com, and Training Peaks.</p>
+<p><a href="https://i1.wp.com/maprantala.com/wp-content/uploads/2014/04/Screen-Shot-2014-04-24-at-9.52.48-PM.png"><img class="alignnone  wp-image-925" src="https://i0.wp.com/maprantala.com/wp-content/uploads/2014/04/Screen-Shot-2014-04-24-at-9.52.48-PM-300x222.png?resize=439%2C325" alt="https://tapiriik.com/" width="439" height="325" data-recalc-dims="1" /></a></p>
+<p>&nbsp;</p>
+<p>You can use Tapiriik for free (you just need to visit their website to start synchronization) or for $2 per year they will automatically synchronize data between your accounts. You just provide your account information for whichever sites you want to synchronize and either visit their site or pay $2 and it will automatically share data between your accounts.</p>
+<p>I linked to my Garmin Connect and Dropbox accounts and tapiriik and after some chugging, I had .GPX files for all of my data.</p>
+<p>It was easy and didn&#8217;t take very long. Definitely met my needs&#8211;I haven&#8217;t shared data between other services but I do use the desktop version of SportTracks and considered using their web version of the software but didn&#8217;t know how I would upload all my data.  Now I know.</p>
+<p>This product definitely saved me a bunch of time. The one thing I wonder, though, is what does &#8220;Tapiriik&#8221; means?</p>
+<p>&nbsp;</p>
+ </p>
+        <hr /></body>
+</html>
